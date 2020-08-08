@@ -11,11 +11,52 @@ pub struct Params {
     pub bindings: HashMap<String, String>,
 }
 
-pub fn parse_params(arguments: Vec<String>) -> Res<Params> {
-    let command = match arguments.get(0) {
-        Some(cmd) => cmd.to_owned(),
+struct ArgStack {
+    index: usize,
+    arguments: Vec<String>,
+}
+
+impl ArgStack {
+    fn new(arguments: Vec<String>) -> Self {
+        ArgStack { index: 0, arguments }
+    }
+
+    fn pop(&mut self) -> Option<&String> {
+        let arg = self.arguments.get(self.index)?;
+        self.index += 1;
+        Some(arg)
+    }
+}
+
+pub fn parse_params(arg_vec: Vec<String>) -> Res<Params> {
+    let mut arg_stack = ArgStack::new(arg_vec);
+    let command = parse_command(&mut arg_stack)?;
+    let script = parse_script(&mut arg_stack)?;
+    for i in 2 .. arg_stack.len() {
+        let arg = &arg_stack[i];
+        if ! arg.starts_with("--") {
+            return Err(format!("expected a parameter name, but got '{}'", arg))
+        }
+        if arg.contains('=') {
+
+        }
+        dbg!(&arg_stack[i]);  //TODO @mark: TEMPORARY! REMOVE THIS!
+    }
+    Ok(Params {
+        command,
+        script,
+        bindings: HashMap::new(),
+    })
+}
+
+fn parse_command(arguments: &mut ArgStack) -> Res<String> {
+    match arguments.pop() {
+        Some(cmd) => Ok(cmd.to_owned()),
         None => return Err("did not find the command 'psy' was invoked with".to_owned()),
-    };
+    }
+}
+
+fn parse_script(arguments: &mut ArgStack) -> Res<PathBuf> {
     let script_name = match arguments.get(1) {
         Some(cmd) => cmd,
         None => return Err("provide the .psy script as the first argument to 'psy'".to_owned()),
@@ -33,19 +74,5 @@ pub fn parse_params(arguments: Vec<String>) -> Res<Params> {
     if !script.is_file() {
         return Err(format!("script '{}' is not a file", script_name))
     }
-    for i in 2 .. arguments.len() {
-        let arg = &arguments[i];
-        if ! arg.starts_with("--") {
-            return Err(format!("expected a parameter name, but got '{}'", arg))
-        }
-        if arg.contains('=') {
-
-        }
-        dbg!(&arguments[i]);  //TODO @mark: TEMPORARY! REMOVE THIS!
-    }
-    Ok(Params {
-        command,
-        script,
-        bindings: HashMap::new(),
-    })
+    Ok(script)
 }
