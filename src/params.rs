@@ -1,13 +1,23 @@
 use ::std::collections::HashMap;
 use ::std::path::PathBuf;
+use ::std::process::exit;
 use ::std::str::FromStr;
 
 use crate::common::Res;
+
+static HELP_TEXT: &'static str = include_str!("help.txt");
+
+
+#[derive(Debug)]
+pub struct Options {
+    verbose: bool,
+}
 
 #[derive(Debug)]
 pub struct Params {
     pub command: String,
     pub script: PathBuf,
+    pub options: Options,
     pub bindings: HashMap<String, String>,
 }
 
@@ -21,6 +31,10 @@ impl ArgStack {
         ArgStack { index: 0, arguments }
     }
 
+    fn peek(&mut self) -> Option<&String> {
+        self.arguments.get(self.index)
+    }
+
     fn pop(&mut self) -> Option<&String> {
         let arg = self.arguments.get(self.index)?;
         self.index += 1;
@@ -31,6 +45,7 @@ impl ArgStack {
 pub fn parse_params(arg_vec: Vec<String>) -> Res<Params> {
     let mut arg_stack = ArgStack::new(arg_vec);
     let command = parse_command(&mut arg_stack)?;
+    let command = parse_psh_options(&mut arg_stack)?;
     let script = parse_script(&mut arg_stack)?;
     for i in 2 .. arg_stack.len() {
         let arg = &arg_stack[i];
@@ -49,6 +64,7 @@ pub fn parse_params(arg_vec: Vec<String>) -> Res<Params> {
     })
 }
 
+/// Extract the name of the command, i.e. 'psh'.
 fn parse_command(arguments: &mut ArgStack) -> Res<String> {
     match arguments.pop() {
         Some(cmd) => Ok(cmd.to_owned()),
@@ -56,6 +72,31 @@ fn parse_command(arguments: &mut ArgStack) -> Res<String> {
     }
 }
 
+/// Extract options to 'psh' itself (before the .psh filename).
+fn parse_psh_options(arguments: &mut ArgStack) -> Res<Options> {
+    let mut verbose = false;
+    while let Some(opt) = arguments.peek() {
+        if !opt.starts_with("-") {
+            break
+        }
+        if opt == "-h" || opt == "--help" {
+            println!();
+            exit(0)
+        }
+        if opt == "-v" {
+            if verbose == true {
+                return Err("verbose (-v) cannot be supplied more than once".to_owned())
+            }
+            verbose = true;
+        }
+
+    }
+    Ok(Options {
+        verbose,
+    })
+}
+
+/// Extract the .psh filename, failing if the file is not found.
 fn parse_script(arguments: &mut ArgStack) -> Res<PathBuf> {
     let script_name = match arguments.get(1) {
         Some(cmd) => cmd,
@@ -76,3 +117,5 @@ fn parse_script(arguments: &mut ArgStack) -> Res<PathBuf> {
     }
     Ok(script)
 }
+
+/// Extract variables fpr the .psh script (after the .psh filename).

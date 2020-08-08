@@ -1,0 +1,25 @@
+psh
+
+Psh is a mix of Python and shell. It adds some tricks to standard Python 3, to make it more convenient as a replacement for shell scripts.
+
+USAGE:
+    [-v][-h] /path/script.psh --name=value
+
+The command has three parts: options, a script name, and environment values.
+
+OPTIONS:
+    -v           Use verbose mode, which shows more information.
+    -h/--help  Display this help information, then exit.
+
+SCRIPT:
+    The absolute or relative path to the .psh script to execute.
+    Scripts will be searched in the current working directory,
+      and in the path given by environment variable PSH_PATH.
+
+ENVIRONMENT:
+    These are name-value pairs, which will be passed to the .pth script.
+    Format is one of
+        --name value
+        --name=value
+
+For more information, see https://github.com/mverleg/psh

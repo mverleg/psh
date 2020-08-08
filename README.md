@@ -2,7 +2,7 @@
 Psh
 ===============================
 
-Psh is a mix of Python and shell. It add some tricks to standard Python 3, to make it more suitable as a replacement for shell scripts.
+Psh is a mix of Python and shell. It adds some tricks to standard Python 3, to make it more convenient as a replacement for shell scripts.
 
 Features include:
 
