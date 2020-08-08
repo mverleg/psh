@@ -46,8 +46,9 @@ RUN find . -wholename '*/release/*' -name 'psh' -type f -executable -print -exec
 FROM scratch
 
 ENV RUST_BACKTRACE=1
+ENV PSH_PATH=/code
 
-WORKDIR /
+WORKDIR /code
 
 COPY --from=build /app/psh /psh
 

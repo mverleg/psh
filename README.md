@@ -10,6 +10,18 @@ Features include:
 * Call external commands easily with `$`
 * Built-in utilities to prevent boilerplate.
 
+Usage
+-------------------------------
+
+Downloadable binaries are planned, but for now you can easily build using either Docker::
+
+    docker build -t psh .
+    docker run --rm -it "$(pwd)":/code psh example/fac.psh
+
+or with Cargo::
+
+    cargo +nightly run --release -- example/fac.psh
+
 Examples
 -------------------------------
 
