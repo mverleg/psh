@@ -1,9 +1,11 @@
+use ::std::fmt;
 
 use ::lazy_static::lazy_static;
 use ::regex::Regex;
 
 use crate::common::Res;
 use crate::params::Arguments;
+use std::fmt::Formatter;
 
 static PY3_HEADER: &'static str = include_str!("py3_header.txt");
 
@@ -25,12 +27,34 @@ pub enum ParamType {
     //Json,
 }
 
+impl fmt::Display for ParamType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        use ParamType::*;
+
+        write!(f, "{}", match self {
+            Text => "text",
+            File => "file",
+            Int => "int",
+            Real => "real",
+            Bool => "bool",
+            Toggle => "toggle",
+            Secret => "secret",
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct Param {
     name: String,
     typ: ParamType,
     is_required: bool,
     default: Option<String>,
+}
+
+impl fmt::Display for Param {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ({}{})", self.name, self.typ, if self.is_required { "" } else { "?" })
+    }
 }
 
 pub fn parse_script(mut psh_script: String, arguments: &Arguments) -> Res<(String, Vec<Param>)> {
@@ -41,31 +65,49 @@ pub fn parse_script(mut psh_script: String, arguments: &Arguments) -> Res<(Strin
     for src_line in psh_script.lines() {
         if ! code_started && ! IS_NOOP_RE.is_match(src_line) {
             code_started = true;
-            println!("START CODE");  //TODO @mark: TEMPORARY! REMOVE THIS!
         }
-        dbg!(src_line);  //TODO @mark: TEMPORARY! REMOVE THIS!
         if IS_ARG_RE.is_match(src_line) {
             if code_started {
                 return Err(format!("found parameter line after start of code (should be at the top, before any code): {}", src_line))
             }
-            let param = match PARSE_ARG_RE.captures(src_line) {
-                Some(parts) => {
-                    let typ = parts.name("type").map(|t| parse_type(t.as_str())?);
-                    Param {
-                        name: parts.name("name").unwrap().as_str().to_owned(),
-                        typ: typ.map(|t| t.0),
-                        is_required: typ.map(|t| t.1),
-                        default: parts.name("default"),
-                    }
-                },
-                None => return Err(format!("found parameter line but could not parse the format: {}\nexamples of valid formats:\n  '? name'\n  '? name: type'\n  '? name: type? = default  # comment'", src_line)),
-            };
+            let param = parse_param(src_line)?;
+            if arguments.options.verbose {
+                print!("expecting argument '{}' of type {}", &param.name, &param.typ);
+                print!("{}", if param.is_required { " (required)" } else { " (optional)" });
+                param.default.as_ref().map(|ref def| print!(", otherwise using {} as default", def));
+                println!();
+            }
             params.push(param);
         }
     }
     Ok((py3, params))
 }
 
+/// Parse a parameter line. The line is already known to be a parameter, and at the top of the script.
+fn parse_param(src_line: &str) -> Res<Param> {
+    match PARSE_ARG_RE.captures(src_line) {
+        Some(parts) => {
+            let name = parts.name("name").unwrap().as_str().to_owned();
+            let typ = match parts.name("type") {
+                Some(type_name) => parse_type(type_name.as_str())?,
+                None => (ParamType::Text, true),
+            };
+            let default = parts.name("default").map(|def| def.as_str().to_owned());
+            if default.is_some() && typ.1 {
+                return Err(format!("parameter '{}' is optional (type has '?' postfix), but it also has a default; this is invalid, parameters with a default value can never be empty", &name))
+            }
+            Ok(Param {
+                name,
+                typ: typ.0,
+                is_required: typ.1,
+                default,
+            })
+        },
+        None => return Err(format!("found parameter line but could not parse the format: {}\nexamples of valid formats:\n  '? name'\n  '? name: type'\n  '? name: type? = default  # comment'", src_line)),
+    }
+}
+
+/// Parse the type of a parameter, including '?' postfix.
 fn parse_type(mut type_name: &str) -> Res<(ParamType, bool)> {
     use ParamType::*;
 
@@ -88,7 +130,7 @@ fn parse_type(mut type_name: &str) -> Res<(ParamType, bool)> {
         "boolean" => Bool,
         "toggle" => Toggle,
         "secret" => Secret,
-        _ => return Err(format!("found a parameter with type '{}', which is invalid\nallowed types are: text, file, int, real, bool, toggle, secret (postfix '?' for optional, e.g. 'int?')", type_name))
+        _ => return Err(format!("found a parameter with type '{}', which is invalid\nallowed types are: text (=default), file, int, real, bool, toggle, secret (postfix '?' for optional, e.g. 'int?')", type_name))
     };
     Ok((typ, is_required))
 }
