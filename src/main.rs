@@ -29,9 +29,12 @@ fn run(arguments: Vec<String>) -> Res<()> {
     let cli_args = parse_params(arguments)?;
     let script_psh = fs::read_to_string(&cli_args.script)
         .map_err(|e| format!("failed to read script file; reason: {}", e))?;
-    let (script_py3, psh_parms) = parse_script(script_psh, &cli_args)?;
+    let (script_py3, psh_params) = parse_script(script_psh, &cli_args)?;
     if cli_args.options.verbose {
         println!("psh will run: {}", &cli_args);
+        println!("expected parameters: {}", &psh_params.iter()
+            .map(|p| format!("{}", p))
+            .collect::<Vec<_>>().join(", "));
     }
     Ok(())  //TODO @mark: TEMPORARY! REMOVE THIS!
 }

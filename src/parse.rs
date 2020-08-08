@@ -53,7 +53,7 @@ pub struct Param {
 
 impl fmt::Display for Param {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{} ({}{})", self.name, self.typ, if self.is_required { "" } else { "?" })
+        write!(f, "'{}' ({}{})", self.name, self.typ, if self.is_required { "" } else { "?" })
     }
 }
 
@@ -71,12 +71,6 @@ pub fn parse_script(mut psh_script: String, arguments: &Arguments) -> Res<(Strin
                 return Err(format!("found parameter line after start of code (should be at the top, before any code): {}", src_line))
             }
             let param = parse_param(src_line)?;
-            if arguments.options.verbose {
-                print!("expecting argument '{}' of type {}", &param.name, &param.typ);
-                print!("{}", if param.is_required { " (required)" } else { " (optional)" });
-                param.default.as_ref().map(|ref def| print!(", otherwise using {} as default", def));
-                println!();
-            }
             params.push(param);
         }
     }
