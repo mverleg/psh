@@ -20,6 +20,9 @@ pub fn parse_params(arguments: Vec<String>) -> Res<Params> {
         Some(cmd) => cmd,
         None => return Err("provide the .psy script as the first argument to 'psy'".to_owned()),
     };
+    if script_name.starts_with("-") {
+        return Err(format!("found a flag instead of a .psh script path: '{}'", script_name))
+    }
     let script = match PathBuf::from_str(script_name) {
         Ok(pth) => pth,
         Err(_) => return Err(format!("the script name '{}' is not a valid path syntactically", script_name)),
@@ -31,6 +34,13 @@ pub fn parse_params(arguments: Vec<String>) -> Res<Params> {
         return Err(format!("script '{}' is not a file", script_name))
     }
     for i in 2 .. arguments.len() {
+        let arg = &arguments[i];
+        if ! arg.starts_with("--") {
+            return Err(format!("expected a parameter name, but got '{}'", arg))
+        }
+        if arg.contains('=') {
+
+        }
         dbg!(&arguments[i]);  //TODO @mark: TEMPORARY! REMOVE THIS!
     }
     Ok(Params {
