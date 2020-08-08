@@ -3,12 +3,15 @@ use ::regex::Regex;
 
 use crate::common::Res;
 use crate::params::Arguments;
+use ::std::fmt;
+use std::fmt::Formatter;
 
 static PY3_HEADER: &'static str = include_str!("py3_header.txt");
 
 lazy_static! {
     static ref IS_NOOP_RE: Regex = Regex::new(r"^\s*([#\?].*)?$").unwrap();
     static ref IS_ARG_RE: Regex = Regex::new(r"^\s*\?").unwrap();
+    static ref PARSE_ARG_RE: Regex = Regex::new(r"^\s*\?\s*(?P<name>\w+)(?:\s*:\s*(?P<type>\w+))?(?:\s*=\s*(?P<default>\w+))?\s*(?:#.*)?$").unwrap();
 }
 
 #[derive(Debug)]
@@ -18,7 +21,9 @@ pub enum ArgType {
     Int,
     Real,
     Bool,
-    JSON,
+    Toggle,
+    Secret,
+    //Json,
 }
 
 #[derive(Debug)]
