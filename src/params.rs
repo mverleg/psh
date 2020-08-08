@@ -45,22 +45,14 @@ impl ArgStack {
 pub fn parse_params(arg_vec: Vec<String>) -> Res<Params> {
     let mut arg_stack = ArgStack::new(arg_vec);
     let command = parse_command(&mut arg_stack)?;
-    let command = parse_psh_options(&mut arg_stack)?;
+    let options = parse_psh_options(&mut arg_stack)?;
     let script = parse_script(&mut arg_stack)?;
-    for i in 2 .. arg_stack.len() {
-        let arg = &arg_stack[i];
-        if ! arg.starts_with("--") {
-            return Err(format!("expected a parameter name, but got '{}'", arg))
-        }
-        if arg.contains('=') {
-
-        }
-        dbg!(&arg_stack[i]);  //TODO @mark: TEMPORARY! REMOVE THIS!
-    }
+    let bindings = parse_bindings(&mut arg_stack)?;
     Ok(Params {
         command,
+        options,
         script,
-        bindings: HashMap::new(),
+        bindings,
     })
 }
 
@@ -79,8 +71,9 @@ fn parse_psh_options(arguments: &mut ArgStack) -> Res<Options> {
         if !opt.starts_with("-") {
             break
         }
+        let opt = arguments.pop().unwrap();
         if opt == "-h" || opt == "--help" {
-            println!();
+            println!("{}", HELP_TEXT);
             exit(0)
         }
         if opt == "-v" {
@@ -88,8 +81,9 @@ fn parse_psh_options(arguments: &mut ArgStack) -> Res<Options> {
                 return Err("verbose (-v) cannot be supplied more than once".to_owned())
             }
             verbose = true;
+            continue;
         }
-
+        return Err(format!("did not recognize option '{}' (if you want to pass to the .psh script, supply the option after the .psh filename)", opt))
     }
     Ok(Options {
         verbose,
@@ -98,7 +92,7 @@ fn parse_psh_options(arguments: &mut ArgStack) -> Res<Options> {
 
 /// Extract the .psh filename, failing if the file is not found.
 fn parse_script(arguments: &mut ArgStack) -> Res<PathBuf> {
-    let script_name = match arguments.get(1) {
+    let script_name = match arguments.pop() {
         Some(cmd) => cmd,
         None => return Err("provide the .psy script as the first argument to 'psy'".to_owned()),
     };
@@ -118,4 +112,28 @@ fn parse_script(arguments: &mut ArgStack) -> Res<PathBuf> {
     Ok(script)
 }
 
-/// Extract variables fpr the .psh script (after the .psh filename).
+/// Extract variables for the .psh script (after the .psh filename).
+fn parse_bindings(arguments: &mut ArgStack) -> Res<HashMap<String, String>> {
+    let mut bindings = HashMap::new();
+    while let Some(opt) = arguments.pop() {
+        if ! opt.starts_with("--") {
+            if opt.starts_with("-") {
+                return Err(format!("environment values should have two dashes (found '{}')", opt))
+            }
+            return Err(format!("expected environment value, starting with --, but found '{}'", opt))
+        }
+        if let Some(eq_pos) = opt.find('=') {
+            let name = opt[2 .. eq_pos].to_owned();
+            let value = opt[eq_pos+1 ..].to_owned();
+            bindings.insert(name, value);
+        } else {
+            let name = opt[2..].to_owned();
+            let value = match arguments.pop() {
+                Some(val) => val.to_owned(),
+                None => return Err(format!("")),
+            };
+            bindings.insert(name, value);
+        }
+    }
+    Ok(bindings)
+}
