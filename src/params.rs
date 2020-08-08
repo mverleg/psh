@@ -13,18 +13,18 @@ static HELP_TEXT: &'static str = include_str!("help.txt");
 
 #[derive(Debug)]
 pub struct Options {
-    verbose: bool,
+    pub verbose: bool,
 }
 
 #[derive(Debug)]
-pub struct Params {
+pub struct Arguments {
     pub command: String,
     pub script: PathBuf,
     pub options: Options,
     pub bindings: HashMap<String, String>,
 }
 
-impl fmt::Display for Params {
+impl fmt::Display for Arguments {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.command)?;
         if self.options.verbose {
@@ -59,21 +59,18 @@ impl ArgStack {
     }
 }
 
-pub fn parse_params(arg_vec: Vec<String>) -> Res<Params> {
+pub fn parse_params(arg_vec: Vec<String>) -> Res<Arguments> {
     let mut arg_stack = ArgStack::new(arg_vec);
     let command = parse_command(&mut arg_stack)?;
     let options = parse_psh_options(&mut arg_stack)?;
     let script = parse_script(&mut arg_stack)?;
     let bindings = parse_bindings(&mut arg_stack)?;
-    let params = Params {
+    let params = Arguments {
         command,
         options,
         script,
         bindings,
     };
-    if params.options.verbose {
-        println!("going to run: {}", params);
-    }
     Ok(params)
 }
 
