@@ -19,7 +19,7 @@ mod parse;
 
 fn main() {
     if let Err(err_msg) = run(args().collect()) {
-        eprintln!("Error! {}", err_msg);
+        eprintln!("Error: {}", err_msg);
         exit(1);
     };
     println!("Hello, world!");
