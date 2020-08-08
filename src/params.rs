@@ -1,9 +1,12 @@
 use ::std::collections::HashMap;
+use ::std::fmt;
 use ::std::path::PathBuf;
 use ::std::process::exit;
 use ::std::str::FromStr;
 
 use crate::common::Res;
+use std::fmt::Formatter;
+use std::fs;
 
 static HELP_TEXT: &'static str = include_str!("help.txt");
 
@@ -19,6 +22,20 @@ pub struct Params {
     pub script: PathBuf,
     pub options: Options,
     pub bindings: HashMap<String, String>,
+}
+
+impl fmt::Display for Params {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.command)?;
+        if self.options.verbose {
+            write!(f, " -v")?;
+        }
+        write!(f, " {}", self.script.to_string_lossy())?;
+        for entry in self.bindings.iter() {
+            write!(f, " --{}='{}'", entry.0, entry.1)?;
+        }
+        Ok(())
+    }
 }
 
 struct ArgStack {
@@ -48,12 +65,16 @@ pub fn parse_params(arg_vec: Vec<String>) -> Res<Params> {
     let options = parse_psh_options(&mut arg_stack)?;
     let script = parse_script(&mut arg_stack)?;
     let bindings = parse_bindings(&mut arg_stack)?;
-    Ok(Params {
+    let params = Params {
         command,
         options,
         script,
         bindings,
-    })
+    };
+    if params.options.verbose {
+        println!("going to run: {}", params);
+    }
+    Ok(params)
 }
 
 /// Extract the name of the command, i.e. 'psh'.
@@ -109,7 +130,9 @@ fn parse_script(arguments: &mut ArgStack) -> Res<PathBuf> {
     if !script.is_file() {
         return Err(format!("script '{}' is not a file", script_name))
     }
-    Ok(script)
+    let abs_script = fs::canonicalize(script).unwrap();
+    //TODO @mark: PSH_PATH
+    Ok(abs_script)
 }
 
 /// Extract variables for the .psh script (after the .psh filename).
